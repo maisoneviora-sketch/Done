@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ClipForge AI</title>
+<style>
+:root{--bg:#0a0a12;--c1:#12121f;--c2:#1b1b30;--ln:#2a2a4a;--tx:#ecebff;--mu:#9896c0;--p:#8b5cf6;--b:#3b82f6;--g:linear-gradient(135deg,#8b5cf6,#3b82f6)}
+*{box-sizing:border-box}html{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.logo{font-weight:800;font-size:21px;letter-spacing:-.5px;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:auto}
+.chip{font-size:12px;padding:5px 10px;border-radius:99px;border:1px solid var(--ln);background:var(--c1);color:var(--mu);cursor:pointer}
+.chip.ok{color:#6ee7a8;border-color:#245a41}.chip.bad{color:#fca5a5;border-color:#6b2a2a}
+main{display:grid;gap:14px;padding:14px;max-width:1200px;margin:auto}
+@media(min-width:900px){main{grid-template-columns:minmax(0,1fr) 430px;align-items:start}}
+.box{background:var(--c1);border:1px solid var(--ln);border-radius:14px;padding:12px}
+button,select,input{font:inherit;color:var(--tx)}
+button{background:var(--c2);border:1px solid var(--ln);border-radius:10px;padding:10px 14px;cursor:pointer;min-height:42px}
+button:hover{border-color:var(--p)}button.pri{background:var(--g);border:0;font-weight:700}
+button.on{border-color:var(--p);background:#2a2150}button:disabled{opacity:.5}
+select,input[type=text],input[type=number],.t{background:var(--c2);border:1px solid var(--ln);border-radius:8px;padding:8px;width:100%;min-height:38px}
+input[type=range]{width:100%;accent-color:var(--p)}input[type=color]{width:100%;height:38px;background:none;border:1px solid var(--ln);border-radius:8px;padding:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}.row>*{flex:1 1 auto}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.g label{font-size:12px;color:var(--mu);display:block}
+#wrap{position:relative;display:flex;justify-content:center;background:#000;border-radius:10px;overflow:hidden;min-height:200px}
+#cv{max-width:100%;max-height:58vh;background:#000}
+#empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--mu);padding:20px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto}.tabs button{flex:1;white-space:nowrap}
+.pn{display:none}.pn.show{display:block}
+.cue{display:grid;grid-template-columns:62px 62px 1fr 38px;gap:6px;margin-top:6px}.cue input{padding:6px;min-height:36px}.cue button{padding:0;min-height:36px}
+#cues,#clipl{max-height:300px;overflow:auto}.clip{display:block;width:100%;text-align:left;margin-top:6px}
+.note{font-size:12px;color:var(--mu);margin-top:8px}
+#pg{margin-top:10px}#barw{height:8px;background:var(--c2);border-radius:9px;overflow:hidden}#bar{height:100%;width:0;background:var(--g);transition:width .2s}
+#msg{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));max-width:620px;margin:auto;padding:12px 14px;border-radius:12px;background:#1b1b30;border:1px solid var(--p);z-index:9;display:none}
+#msg.err{border-color:#ef4444;background:#2a1418}#msg.ok{border-color:#22c55e;background:#10231a}
+a.dl{display:block;text-align:center;margin-top:10px;padding:12px;border-radius:10px;background:#10231a;border:1px solid #22c55e;color:#6ee7a8;text-decoration:none}
+</style></head><body>
+<header><span class="logo">ClipForge AI</span><span id="api" class="chip">Checking backend…</span><button class="pri" id="addsub">Add Subtitles</button></header>
+<main>
+<section>
+ <div class="box">
+  <div id="wrap"><canvas id="cv"></canvas><div id="empty"><div><b>No media yet</b><br>Upload a video or picture to start editing.</div></div></div>
+  <div class="row"><button id="play" class="pri" style="flex:0 0 56px">▶</button><input id="seek" type="range" min="0" max="1" step="0.01" value="0" style="flex:1 1 60%"><span id="tm" class="note" style="flex:0 0 auto;margin:0">0:00.0 / 0:00.0</span></div>
+  <div class="g"><div><label>Trim start <b id="l0">0:00.0</b></label><input id="t0" type="range" min="0" max="1" step="0.1" value="0"></div><div><label>Trim end <b id="l1">0:00.0</b></label><input id="t1" type="range" min="0" max="1" step="0.1" value="1"></div></div>
+  <div class="row" id="ratios"><button data-r="9:16" class="on">9:16 Shorts/Reels</button><button data-r="16:9">16:9</button><button data-r="1:1">1:1</button></div>
+  <div class="row"><button id="bv" class="pri">Upload Video</button><button id="bi">Upload Picture</button><button id="rm">Remove</button></div>
+  <input id="fv" type="file" accept="video/*,.mp4,.mov,.m4v,.webm,.mkv,.3gp" hidden>
+  <input id="fi" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+ </div>
+</section>
+<section class="box">
+ <div class="tabs"><button data-tab="subs" class="on">Subtitles</button><button data-tab="style">Style</button><button data-tab="clips">Clips</button><button data-tab="exp">Export</button></div>
+ <div class="pn show" id="p-subs">
+  <div class="g"><div><label>Speech language</label><select id="lang"><option value="auto">Auto-detect</option><option value="en">English</option><option value="ur">Urdu (اردو)</option></select></div><div><label>Show subtitles</label><label style="font-size:15px;color:var(--tx);padding-top:8px"><input type="checkbox" id="subon" checked> Enabled</label></div></div>
+  <div class="row"><button class="pri" id="auto">Generate from speech</button><button id="addcue">+ Cue at playhead</button><button id="clr">Clear</button></div>
+  <div class="g"><input type="text" id="fr" placeholder="Find word"><input type="text" id="to" placeholder="Replace with"></div>
+  <div class="row"><button id="rep">Replace in all cues</button></div>
+  <div id="cues"></div>
+  <p class="note">Tap a line to edit words. Times are in seconds of the original video. Karaoke and highlight styles spread each cue's words evenly across its time.</p>
+ </div>
+ <div class="pn" id="p-style">
+  <div class="row" id="presets"><button data-s="bold" class="on">Bold</button><button data-s="outline">White + outline</button><button data-s="highlight">Yellow word</button><button data-s="karaoke">Karaoke</button></div>
+  <div class="g">
+   <div><label>Font</label><select id="sf"><option>Arial</option><option>Impact</option><option>Georgia</option><option>Courier New</option><option>Verdana</option></select></div>
+   <div><label>Size</label><input id="ss" type="range" min="3" max="14" step=".5" value="7"></div>
+   <div><label>Text color</label><input id="sc" type="color" value="#ffffff"></div>
+   <div><label>Highlight color</label><input id="sh" type="color" value="#facc15"></div>
+   <div><label>Alignment</label><select id="sa"><option value="c">Center</option><option value="l">Left</option><option value="r">Right</option></select></div>
+   <div><label>Vertical position</label><input id="sp" type="range" min="8" max="94" value="78"></div>
+   <div><label>Background color</label><input id="sbg" type="color" value="#000000"></div>
+   <div><label>Background opacity</label><input id="sba" type="range" min="0" max="100" value="0"></div>
+   <div><label>Outline color</label><input id="soc" type="color" value="#000000"></div>
+   <div><label>Outline width</label><input id="sow" type="range" min="0" max="20" value="10"></div>
+  </div>
+ </div>
+ <div class="pn" id="p-clips">
+  <div class="g"><div><label>Clip length</label><select id="cd"><option>15</option><option selected>30</option><option>45</option><option>60</option></select></div><div><label>Reframe (crop position)</label><input id="rx" type="range" min="0" max="100" value="50"></div></div>
+  <div class="row"><button id="ai" class="pri" style="flex:1 1 100%">AI Pick Moments (from subtitles)</button></div><div class="row"><button id="find">Find Best Moments</button><button id="gen">Generate Clips</button><button id="prev">Preview Clips</button></div>
+  <div id="clipl"></div>
+  <p class="note">Best moments are ranked by speech/audio energy, analysed on your device (no upload). Reframing is a manual center-crop slider; there is no automatic face tracking. Select a clip, then fine-tune it with the trim sliders.</p>
+ </div>
+ <div class="pn" id="p-exp">
+  <div class="g"><div><label>Quality</label><select id="q"><option value="1080">1080p</option><option value="720">720p (faster on phones)</option></select></div><div id="idw" hidden><label>Picture duration (s)</label><input id="idur" type="number" min="1" max="120" value="10"></div></div>
+  <div class="row"><label style="flex:1 1 100%"><input type="checkbox" id="burn" checked> Burn subtitles into the video</label></div>
+  <div class="row"><label style="flex:1 1 100%"><input type="checkbox" id="ff" checked> If the browser can only record WebM, convert to MP4 with FFmpeg</label></div><div class="row"><button class="pri" id="export">Export Video</button><button id="expall">Export All Clips</button><button id="srt">Download SRT</button></div>
+  <div id="dlw"></div>
+  <p class="note">Export records in real time (a 30 s clip takes about 30 s), so keep this tab open and the screen on. MP4 is recorded directly where supported; otherwise FFmpeg converts WebM to MP4 on your device (slower, needs a connection the first time). No watermark is added.</p>
+ </div>
+ <div id="pg" hidden><div id="barw"><div id="bar"></div></div><div class="row"><span id="pt" class="note" style="margin:0"></span><button id="cancel" style="flex:0 0 auto;min-height:32px;padding:4px 10px">Cancel</button></div></div>
+</section>
+</main>
+<div id="msg"></div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const S={kind:null,file:null,url:null,dur:0,t0:0,t1:0,t:0,cues:[],pcm:null,moments:[],clips:[],sel:-1,ratio:'9:16',style:'bold',playing:false,loop:false,busy:false,exporting:false,cancel:false,api:'unknown'};
+const vid=document.createElement('video');vid.playsInline=true;vid.preload='auto';
+const img=new Image(),cv=$('#cv'),cx=cv.getContext('2d');let last=performance.now();
+const fmt=t=>Math.floor(t/60)+':'+(t%60).toFixed(1).padStart(4,'0');
+const T=()=>S.kind==='video'?vid.currentTime:S.t;
+const dims=s=>{const[a,b]=S.ratio.split(':').map(Number);return a<b?[s,Math.round(s*b/a)]:a>b?[Math.round(s*a/b),s]:[s,s]};
+let mt;function msg(t,k){const m=$('#msg');m.textContent=t;m.className=k||'';m.style.display='block';clearTimeout(mt);if(k==='ok')mt=setTimeout(()=>m.style.display='none',6000)}
+$('#msg').onclick=()=>$('#msg').style.display='none';
+function busy(b,f,t){S.busy=b;$('#pg').hidden=!b;if(b){$('#bar').style.width=(f||0)*100+'%';$('#pt').textContent=t||'Working…'}}
+const rgba=(h,a)=>{const n=parseInt(h.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${a/100})`};
+const opt=()=>({font:$('#sf').value,size:+$('#ss').value,col:$('#sc').value,hl:$('#sh').value,al:$('#sa').value,pos:+$('#sp').value,bg:$('#sbg').value,ba:+$('#sba').value,oc:$('#soc').value,ow:+$('#sow').value,st:S.style});
+
+/* ---------- drawing ---------- */
+function drawFrame(c,W,H,t,subs){
+ c.fillStyle='#000';c.fillRect(0,0,W,H);
+ const v=S.kind==='video',el=v?vid:img,sw=v?vid.videoWidth:img.naturalWidth,sh=v?vid.videoHeight:img.naturalHeight;
+ if(sw&&(!v||vid.readyState>=2)){const sc=Math.max(W/sw,H/sh),dw=sw*sc,dh=sh*sc;c.drawImage(el,(W-dw)*(+$('#rx').value/100),(H-dh)/2,dw,dh)}
+ if(subs)drawSub(c,W,H,t)}
+function drawSub(c,W,H,t){
+ const q=S.cues.find(k=>t>=k.s&&t<k.e);if(!q||!q.t.trim())return;
+ const o=opt(),fs=o.size/100*Math.min(W,H),lh=fs*1.3;
+ c.font=`800 ${fs}px ${o.font},"Noto Naskh Arabic","Noto Nastaliq Urdu",sans-serif`;c.textBaseline='middle';c.lineJoin='round';
+ const ws=q.t.trim().split(/\s+/),rtl=/[\u0600-\u06FF]/.test(q.t),sp=c.measureText(' ').width,mx=W*.88,L=[];let cur=[],cw=0;
+ ws.forEach((w,i)=>{const ww=c.measureText(w).width;if(cur.length&&cw+sp+ww>mx){L.push({w:cur,wd:cw});cur=[];cw=0}cur.push({w,ww,i});cw+=(cur.length>1?sp:0)+ww});L.push({w:cur,wd:cw});
+ const act=Math.min(ws.length-1,Math.floor((t-q.s)/Math.max(.01,q.e-q.s)*ws.length)),prog=((t-q.s)/Math.max(.01,q.e-q.s)*ws.length)-act;
+ let y=o.pos/100*H-L.length*lh/2+lh/2;
+ L.forEach(l=>{
+  const x0=o.al==='l'?W*.06:o.al==='r'?W*.94-l.wd:(W-l.wd)/2;
+  if(o.ba>0){c.fillStyle=rgba(o.bg,o.ba);c.beginPath();c.roundRect?c.roundRect(x0-fs*.3,y-lh/2,l.wd+fs*.6,lh,fs*.25):c.rect(x0-fs*.3,y-lh/2,l.wd+fs*.6,lh);c.fill()}
+  let x=rtl?x0+l.wd:x0;
+  l.w.forEach(w=>{
+   const px=rtl?x-w.ww:x,fr=o.st==='karaoke'?(w.i<act?1:w.i===act?prog:0):o.st==='highlight'?(w.i===act?1:0):0;
+   c.textAlign='left';if(o.ow){c.lineWidth=o.ow/100*fs*1.5;c.strokeStyle=o.oc;c.strokeText(w.w,px,y)}
+   c.fillStyle=o.col;c.fillText(w.w,px,y);
+   if(fr>0){c.save();c.beginPath();c.rect(rtl?px+w.ww*(1-fr):px,y-fs,w.ww*fr,fs*2);c.clip();c.fillStyle=o.hl;c.fillText(w.w,px,y);c.restore()}
+   x+=rtl?-(w.ww+sp):w.ww+sp});
+  y+=lh})}
+
+/* ---------- playback ---------- */
+let AC,dest,spk;
+function audio(){if(AC)return AC.resume();AC=new(window.AudioContext||window.webkitAudioContext)();const s=AC.createMediaElementSource(vid);dest=AC.createMediaStreamDestination();spk=AC.createGain();s.connect(spk);spk.connect(AC.destination);s.connect(dest);return AC.resume()}
+function seek(t){t=Math.max(0,Math.min(t,S.dur));S.kind==='video'?vid.currentTime=t:S.t=t}
+const seekWait=t=>new Promise(r=>{if(S.kind!=='video'){S.t=t;return r()}vid.onseeked=()=>{vid.onseeked=null;r()};vid.currentTime=t});
+async function play(){if(!S.kind)return msg('Upload a video or picture first.','err');if(S.kind==='video')await audio();if(spk)spk.gain.value=1;
+ if(T()<S.t0||T()>=S.t1-.05)seek(S.t0);last=performance.now();S.playing=true;if(S.kind==='video')vid.play().catch(()=>msg('Playback was blocked. Tap play again.','err'));$('#play').textContent='❚❚'}
+function pause(){S.playing=false;vid.pause();$('#play').textContent='▶'}
+$('#play').onclick=()=>S.playing?pause():play();
+$('#seek').oninput=e=>seek(+e.target.value);
+function tick(){const n=performance.now();if(S.kind==='image'&&S.playing)S.t+=(n-last)/1000;last=n}
+function loop(){tick();
+ if(S.kind&&!S.exporting){
+  if(S.playing&&(T()>=S.t1-.03||(S.kind==='video'&&vid.ended))){if(S.loop){seek(S.t0);if(S.kind==='video')vid.play()}else pause()}
+  drawFrame(cx,cv.width,cv.height,T(),$('#subon').checked);$('#seek').value=T();$('#tm').textContent=fmt(T())+' / '+fmt(S.dur)}
+ requestAnimationFrame(loop)}
+function setRatio(r){S.ratio=r;[cv.width,cv.height]=dims(540);$$('#ratios button').forEach(b=>b.classList.toggle('on',b.dataset.r===r))}
+$$('#ratios button').forEach(b=>b.onclick=()=>setRatio(b.dataset.r));setRatio('9:16');
+
+/* ---------- media ---------- */
+function setTrim(a,b){S.t0=a;S.t1=b;$('#t0').value=a;$('#t1').value=b;$('#l0').textContent=fmt(a);$('#l1').textContent=fmt(b)}
+function clearMedia(){pause();if(S.url)URL.revokeObjectURL(S.url);Object.assign(S,{kind:null,file:null,url:null,dur:0,t:0,cues:[],pcm:null,moments:[],clips:[],sel:-1});vid.removeAttribute('src');vid.load();$('#empty').hidden=false;$('#idw').hidden=true;$('#bv').textContent='Upload Video';$('#bi').textContent='Upload Picture';$('#dlw').innerHTML='';renderCues();renderClips();cx.clearRect(0,0,cv.width,cv.height)}
+function ready(kind,dur){S.kind=kind;S.dur=dur;['#seek','#t0','#t1'].forEach(s=>$(s).max=dur);setTrim(0,dur);S.t=0;$('#empty').hidden=true;$('#idw').hidden=kind!=='image';$('#bv').textContent=kind==='video'?'Replace Video':'Upload Video';$('#bi').textContent=kind==='image'?'Replace Picture':'Upload Picture';msg(kind==='video'?'Video loaded.':'Picture loaded.','ok')}
+function load(kind,f){clearMedia();S.file=f;S.url=URL.createObjectURL(f);
+ if(kind==='video'){vid.onerror=()=>{msg('This browser cannot play that video (often HEVC/H.265 or MKV). Convert it to H.264 MP4 and try again.','err');clearMedia()};
+  vid.onloadedmetadata=()=>{if(!isFinite(vid.duration)||!vid.duration){msg('Could not read this video’s length. Try another file.','err');return clearMedia()}vid.onerror=null;vid.currentTime=.01;ready('video',vid.duration)};vid.src=S.url}
+ else{img.onload=()=>ready('image',+$('#idur').value||10);img.onerror=()=>{msg('Could not read this picture.','err');clearMedia()};img.src=S.url}}
+$('#bv').onclick=()=>$('#fv').click();$('#bi').onclick=()=>$('#fi').click();$('#rm').onclick=()=>{clearMedia();msg('Media removed.','ok')};
+$('#fv').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+ if(!(f.type.startsWith('video/')||/\.(mp4|mov|m4v|webm|mkv|3gp|avi)$/i.test(f.name)))return msg('That is not a video file. Choose MP4, MOV, WebM or 3GP.','err');
+ if(f.size>2e9)return msg('That file is over 2 GB, which is too large for a browser. Trim or compress it first.','err');load('video',f)};
+$('#fi').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+ if(!/^image\/(jpeg|png|webp)$/.test(f.type))return msg('Unsupported picture. Use JPG, PNG or WebP.','err');
+ if(f.size>30e6)return msg('Picture is over 30 MB. Choose a smaller one.','err');load('image',f)};
+$('#idur').onchange=()=>{if(S.kind==='image'){S.dur=Math.max(1,+$('#idur').value);['#seek','#t0','#t1'].forEach(s=>$(s).max=S.dur);setTrim(0,S.dur)}};
+$('#t0').oninput=e=>{setTrim(Math.min(+e.target.value,S.t1-.5),S.t1);seek(S.t0)};
+$('#t1').oninput=e=>{setTrim(S.t0,Math.max(+e.target.value,S.t0+.5));seek(Math.max(S.t0,S.t1-.5))};
+$('#t0').onchange=$('#t1').onchange=()=>{if(S.sel>=0){S.clips[S.sel].s=S.t0;S.clips[S.sel].e=S.t1;renderClips()}};
+
+/* ---------- tabs / style ---------- */
+function tab(n){$$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===n));$$('.pn').forEach(p=>p.classList.toggle('show',p.id==='p-'+n))}
+$$('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+const PRE={bold:{sc:'#ffffff',sow:6,sba:0},outline:{sc:'#ffffff',sow:14,sba:0},highlight:{sc:'#ffffff',sh:'#facc15',sow:10,sba:0},karaoke:{sc:'#ffffff',sh:'#38bdf8',sow:10,sba:0}};
+$$('#presets button').forEach(b=>b.onclick=()=>{S.style=b.dataset.s;$$('#presets button').forEach(x=>x.classList.toggle('on',x===b));Object.entries(PRE[S.style]).forEach(([k,v])=>$('#'+k).value=v)});
+
+/* ---------- subtitles ---------- */
+function renderCues(){const L=$('#cues');L.innerHTML='';S.cues.sort((a,b)=>a.s-b.s).forEach((q,i)=>{const r=document.createElement('div');r.className='cue';r.innerHTML='<input type="number" step="0.1"><input type="number" step="0.1"><input type="text" class="t" dir="auto"><button>✕</button>';
+ const[a,b,t,d]=r.children;a.value=q.s.toFixed(2);b.value=q.e.toFixed(2);t.value=q.t;a.onchange=()=>q.s=+a.value;b.onchange=()=>q.e=+b.value;t.oninput=()=>q.t=t.value;t.onfocus=()=>{pause();seek(q.s)};d.onclick=()=>{S.cues.splice(i,1);renderCues()};L.append(r)})}
+function addCue(){const s=T();S.cues.push({s,e:Math.min(s+2,S.dur),t:'New subtitle'});renderCues()}
+$('#addcue').onclick=()=>S.kind?addCue():msg('Upload media first.','err');
+$('#addsub').onclick=()=>{tab('subs');if(!S.kind)return msg('Upload a video or picture first, then add subtitles.','err');if(!S.cues.length)addCue()};
+$('#clr').onclick=()=>{S.cues=[];renderCues()};
+$('#rep').onclick=()=>{const f=$('#fr').value;if(!f)return;S.cues.forEach(q=>q.t=q.t.split(f).join($('#to').value));renderCues()};
+function group(ws){const o=[];let c=[];const fl=()=>{if(c.length){o.push({s:c[0].s,e:c[c.length-1].e,t:c.map(x=>x.t).join(' ')});c=[]}};
+ ws.forEach(w=>{if(c.length&&w.s-c[c.length-1].e>.8)fl();c.push(w);if(c.length>=5||/[.!?,۔،]$/.test(w.t))fl()});fl();return o}
+async function decodePCM(){if(S.pcm)return S.pcm;
+ if(S.kind!=='video')throw new Error('This needs a video with an audio track.');
+ if(S.dur>1500||S.file.size>600e6)throw new Error('This video is too long/large to analyse in the browser (limit about 25 min / 600 MB). Trim it first, or use manual subtitles.');
+ busy(true,0,'Reading audio…');const ab=await S.file.arrayBuffer(),ac=new(window.AudioContext||window.webkitAudioContext)();let b;
+ try{b=await ac.decodeAudioData(ab)}catch(e){throw new Error('Could not read audio from this video (no audio track, or unsupported codec/low memory).')}finally{ac.close()}
+ const r=b.sampleRate/16000,n=Math.floor(b.length/r),o=new Float32Array(n),ch=[...Array(b.numberOfChannels)].map((_,i)=>b.getChannelData(i));
+ for(let i=0;i<n;i++){let s=0;const a=Math.floor(i*r),z=Math.max(a+1,Math.floor((i+1)*r));for(let j=a;j<z;j++)for(const c of ch)s+=c[j];o[i]=s/((z-a)*ch.length)}
+ return S.pcm=o}
+function wav(f){const n=f.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+ w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,16000,true);v.setUint32(28,32000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+ for(let i=0;i<n;i++)v.setInt16(44+i*2,Math.max(-1,Math.min(1,f[i]))*32767,true);return b}
+$('#auto').onclick=async()=>{if(S.busy)return;S.cancel=false;
+ try{if(S.kind!=='video')throw new Error('Auto subtitles need a video with speech. Use manual cues for pictures.');
+  if(S.api==='nokey')throw new Error('Speech API key missing. Add OPENAI_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy (see README). Manual subtitles still work.');
+  const pcm=await decodePCM(),CH=60*16000,n=Math.ceil(pcm.length/CH),ws=[],segs=[];
+  for(let i=0;i<n;i++){if(S.cancel)throw new Error('Cancelled.');const part=pcm.subarray(i*CH,(i+1)*CH);if(part.length<3200)continue;busy(true,i/n,`Transcribing part ${i+1} of ${n}…`);
+   const r=await fetch('/api/transcribe?lang='+$('#lang').value,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:wav(part)}).catch(()=>{throw new Error('Network error: /api/transcribe is unreachable. Deploy to Vercel or run "vercel dev" (see README).')});
+   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||'Transcription failed ('+r.status+').');
+   (j.words||[]).forEach(w=>ws.push({t:w.word.trim(),s:w.start+i*60,e:w.end+i*60}));(j.segments||[]).forEach(s=>segs.push({s:s.start+i*60,e:s.end+i*60,t:s.text.trim()}))}
+  if(ws.length)S.cues=group(ws);else if(segs.length)S.cues=segs;else throw new Error('No speech was detected in this video.');
+  renderCues();msg(`Created ${S.cues.length} subtitle lines. Review and fix any mistakes below.`,'ok')}
+ catch(e){msg(e.message,'err')}finally{busy(false)}};
+$('#cancel').onclick=()=>S.cancel=true;
+
+/* ---------- clipping ---------- */
+function renderClips(){const L=$('#clipl');L.innerHTML='';S.clips.forEach((c,i)=>{const b=document.createElement('button');b.className='clip'+(i===S.sel?' on':'');b.textContent=`Clip ${i+1}: ${fmt(c.s)} to ${fmt(c.e)}`+(c.title?` · ${c.title}`:'')+(c.v!=null?` (energy ${c.v})`:'');b.onclick=()=>{S.sel=i;setTrim(c.s,c.e);seek(c.s);renderClips()};L.append(b)})}
+$('#find').onclick=async()=>{if(S.busy)return;try{
+ const pcm=await decodePCM(),d=+$('#cd').value,sr=16000,secs=Math.floor(pcm.length/sr);if(secs<d)throw new Error('The video is shorter than the chosen clip length. Pick a shorter duration.');
+ const e=new Float32Array(secs);for(let i=0;i<secs;i++){let s=0;for(let j=i*sr;j<(i+1)*sr;j+=8)s+=pcm[j]**2;e[i]=Math.sqrt(s/(sr/8))}
+ const sc=[];let run=0;for(let i=0;i<secs;i++){run+=e[i];if(i>=d)run-=e[i-d];if(i>=d-1)sc.push({s:i-d+1,v:run/d})}
+ sc.sort((a,b)=>b.v-a.v);const pk=[];for(const c of sc){if(pk.every(p=>Math.abs(p.s-c.s)>=d))pk.push(c);if(pk.length>=5)break}
+ const mx=pk[0].v||1;S.moments=pk.sort((a,b)=>a.s-b.s).map(p=>({s:p.s,e:Math.min(p.s+d,S.dur),v:Math.round(p.v/mx*100)}));
+ S.clips=S.moments.map(m=>({...m}));S.sel=-1;renderClips();msg(`Found ${S.moments.length} high-energy moments. Tap one to trim and preview.`,'ok')}
+ catch(e){msg(e.message,'err')}finally{busy(false)}};
+$('#gen').onclick=()=>{if(S.kind!=='video')return msg('Upload a video first.','err');const d=+$('#cd').value;
+ if(S.moments.length)S.clips=S.moments.map(m=>({...m,e:Math.min(m.s+d,S.dur)}));
+ else{S.clips=[];for(let s=0;s<S.dur-2;s+=d)S.clips.push({s,e:Math.min(s+d,S.dur)})}
+ S.sel=-1;renderClips();msg(`${S.clips.length} clips ready. Tap a clip to select it.`,'ok')};
+$('#prev').onclick=()=>{if(!S.clips.length)return msg('Generate clips first.','err');if(S.sel<0){S.sel=0;renderClips()}const c=S.clips[S.sel];setTrim(c.s,c.e);S.loop=true;seek(c.s);play();msg('Previewing clip in a loop. Press ❚❚ to stop.','ok')};
+$('#play').addEventListener('click',()=>{if(!S.playing)S.loop=false});
+
+/* ---------- export ---------- */
+const dl=(blob,name)=>{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();return u};
+function srt(){const f=t=>{t=Math.max(0,t);const p=(n,l=2)=>String(n).padStart(l,'0');return`${p(Math.floor(t/3600))}:${p(Math.floor(t%3600/60))}:${p(Math.floor(t%60))},${p(Math.min(999,Math.floor(t%1*1000)),3)}`};
+ return S.cues.filter(q=>q.e>S.t0&&q.s<S.t1).map((q,i)=>`${i+1}\n${f(q.s-S.t0)} --> ${f(Math.min(q.e,S.t1)-S.t0)}\n${q.t}\n`).join('\n')}
+$('#srt').onclick=()=>{if(!S.cues.length)return msg('There are no subtitles to download yet.','err');dl(new Blob(['\ufeff'+srt()],{type:'application/x-subrip'}),'clipforge-subtitles.srt');msg('SRT downloaded (times start at your trim start).','ok')};
+let FF;
+async function toMp4(b){
+ if(b.blob.size>200e6)throw new Error('file too large to convert on this device');
+ if(!FF){busy(true,0,'Loading FFmpeg (about 30 MB, first time only)…');
+  await Promise.all(['https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js','https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js'].map(u=>new Promise((r,j)=>{const s=document.createElement('script');s.src=u;s.onload=r;s.onerror=()=>j(new Error('could not load FFmpeg; check your connection'));document.head.append(s)})));
+  const B='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd',U=FFmpegUtil,f=new FFmpegWASM.FFmpeg();
+  f.on('progress',({progress})=>busy(true,Math.min(1,Math.max(0,progress)),'Converting to MP4…'));
+  await f.load({classWorkerURL:await U.toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js','text/javascript'),coreURL:await U.toBlobURL(B+'/ffmpeg-core.js','text/javascript'),wasmURL:await U.toBlobURL(B+'/ffmpeg-core.wasm','application/wasm')});FF=f}
+ busy(true,0,'Converting to MP4…');
+ await FF.writeFile('in.webm',new Uint8Array(await b.blob.arrayBuffer()));
+ const rc=await FF.exec(['-i','in.webm','-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart','out.mp4']);
+ if(rc!==0)throw new Error('encoder failed');
+ const d=await FF.readFile('out.mp4');await FF.deleteFile('in.webm');await FF.deleteFile('out.mp4');
+ return{blob:new Blob([d.buffer],{type:'video/mp4'}),ext:'mp4'}}
+async function record(label){
+ pause();S.exporting=true;busy(true,0,'Preparing export…');
+ try{if(!window.MediaRecorder)throw new Error('This browser cannot record video. Use the latest Chrome, Edge, Firefox or Safari.');
+  const[W,H]=dims(+$('#q').value),ec=document.createElement('canvas');ec.width=W;ec.height=H;const c=ec.getContext('2d');
+  const mime=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m));if(!mime)throw new Error('No supported video format on this browser.');
+  const st=ec.captureStream(30);if(S.kind==='video'){await audio();spk.gain.value=0;dest.stream.getAudioTracks().forEach(t=>st.addTrack(t))}
+  const rec=new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:W>1300||H>1300?10e6:6e6}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  const done=new Promise((r,j)=>{rec.onstop=r;rec.onerror=e=>j(e.error||new Error('Recorder failed.'))});
+  await seekWait(S.t0);const burn=$('#burn').checked&&$('#subon').checked;last=performance.now();S.playing=true;rec.start(1000);if(S.kind==='video')await vid.play();
+  await new Promise(res=>{const f=()=>{tick();const t=T();drawFrame(c,W,H,t,burn);const p=Math.min(1,(t-S.t0)/(S.t1-S.t0));busy(true,p,`${label} ${Math.round(p*100)}% (keep this tab open)`);
+   if(S.cancel||t>=S.t1-.03||(S.kind==='video'&&vid.ended))res();else requestAnimationFrame(f)};f()});
+  S.playing=false;vid.pause();rec.stop();await done;if(S.cancel)throw new Error('Export cancelled.');
+  const blob=new Blob(ch,{type:mime});if(!blob.size)throw new Error('Export produced an empty file. Try 720p or a shorter range.');
+  return{blob,ext:mime.startsWith('video/mp4')?'mp4':'webm'}}
+ finally{S.exporting=false;S.playing=false;if(spk)spk.gain.value=1}}
+async function finish(b,name){
+ if(b.ext==='webm'&&$('#ff').checked){try{b=await toMp4(b)}catch(e){msg('MP4 conversion failed ('+e.message+'). Saving WebM instead.','err')}}
+ const u=dl(b.blob,name+'.'+b.ext);$('#dlw').insertAdjacentHTML('beforeend',`<a class="dl" href="${u}" download="${name}.${b.ext}">${name}.${b.ext} (${(b.blob.size/1e6).toFixed(1)} MB)</a>`);return b.ext}
+$('#export').onclick=async()=>{if(S.busy)return;S.cancel=false;$('#dlw').innerHTML='';
+ try{if(!S.kind)throw new Error('Upload a video or picture first.');const e=await finish(await record('Exporting'),'clipforge-export');
+  msg(e==='mp4'?'Export complete: MP4 saved.':'Export complete as WebM (this browser cannot make MP4).','ok')}
+ catch(e){msg(e.message,'err')}finally{busy(false);if(S.kind)seek(S.t0)}};
+$('#expall').onclick=async()=>{if(S.busy)return;if(!S.clips.length)return msg('Generate clips first.','err');S.cancel=false;$('#dlw').innerHTML='';let n=0;
+ try{for(let i=0;i<S.clips.length;i++){if(S.cancel)break;const c=S.clips[i];setTrim(c.s,c.e);await finish(await record(`Clip ${i+1} of ${S.clips.length}:`),'clipforge-clip-'+(i+1));n++}
+  msg(`Exported ${n} of ${S.clips.length} clips. If your phone blocked some downloads, use the links below.`,n?'ok':'err')}
+ catch(e){msg(`${e.message} (${n} clips finished.)`,'err')}finally{busy(false);if(S.kind)seek(S.t0)}};
+$('#ai').onclick=async()=>{if(S.busy)return;
+ try{if(!S.cues.length)throw new Error('Add or generate subtitles first. The AI picks moments from the transcript.');
+  if(S.api!=='ok')throw new Error('AI picking needs the backend and OPENAI_API_KEY (see README).');
+  busy(true,.5,'Asking AI for the best moments…');
+  const r=await fetch('/api/moments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cues:S.cues,dur:+$('#cd').value,total:S.dur})}).catch(()=>{throw new Error('Network error: /api/moments is unreachable.')});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||'AI request failed ('+r.status+').');
+  S.moments=(j.moments||[]).map(m=>({s:Math.max(0,m.start),e:Math.min(S.dur,m.end),title:m.title})).filter(m=>m.e-m.s>=3);
+  if(!S.moments.length)throw new Error('The AI returned no usable moments.');S.clips=S.moments.map(m=>({...m}));S.sel=-1;renderClips();msg(`AI picked ${S.moments.length} moments from your transcript.`,'ok')}
+ catch(e){msg(e.message,'err')}finally{busy(false)}};
+
+/* ---------- backend status ---------- */
+const chip=$('#api');function setApi(k){S.api=k;chip.className='chip '+(k==='ok'?'ok':'bad');chip.textContent=k==='ok'?'Speech API ready':k==='nokey'?'API key missing':'Backend offline (manual mode)'}
+fetch('/api/transcribe').then(r=>r.json()).then(j=>setApi(j.configured?'ok':'nokey')).catch(()=>setApi('off'));
+chip.onclick=()=>msg(S.api==='ok'?'Auto subtitles are available.':S.api==='nokey'?'Add OPENAI_API_KEY in Vercel → Settings → Environment Variables and redeploy.':'The /api backend is not reachable. Deploy to Vercel or run "vercel dev". Manual subtitles, trimming and export still work.',S.api==='ok'?'ok':'err');
+renderCues();loop();
+</script></body></html>
